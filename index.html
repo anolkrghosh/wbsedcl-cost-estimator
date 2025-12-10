@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WBSEDCL Energy Cost Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Modernized Base Styles */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6; 
+        }
+        .card { 
+            background-color: white; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.02); 
+            border: 1px solid #e5e7eb; 
+        }
+        /* Custom input focus style */
+        .form-input-custom:focus {
+            --tw-ring-color: #3b82f6; 
+            border-color: #3b82f6;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+        }
+        /* Style for editable table cells */
+        .editable-cell {
+            background-color: #fff; 
+            border-radius: 4px;
+            padding: 4px 8px;
+            text-align: right;
+            border: 1px solid #d1d5db;
+            color: #1f2937;
+            transition: all 0.1s;
+        }
+        .editable-cell:focus {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+            border-color: #3b82f6;
+        }
+        /* Style for editable rate in breakdown */
+        .editable-rate {
+            cursor: pointer;
+            border: 1px solid transparent;
+            min-width: 60px;
+            display: inline-block;
+            transition: all 0.1s;
+        }
+        .editable-rate:hover {
+            border-color: #e5e7eb;
+        }
+        .editable-rate:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div id="app" class="max-w-6xl mx-auto">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-10 text-center tracking-tight">
+            ⚡ WBSEDCL Energy Cost Estimator
+        </h1>
+
+        <!-- Step 1: Appliance Input -->
+        <div id="equipment-section" class="equipment_details card p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200">
+                1. Add Equipment (Daily Usage)
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-4 items-end">
+                <div class="col-span-2 sm:col-span-2">
+                    <label for="applianceDetail" class="block text-xs font-medium text-gray-600 mb-1">Appliance Name</label>
+                    <input type="text" id="applianceDetail" placeholder="Fan, TV, Motor" class="form-input-custom w-full p-2.5 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label for="wattDetail" class="block text-xs font-medium text-gray-600 mb-1">Wattage (W)</label>
+                    <input type="number" id="wattDetail" value="100" min="1" class="form-input-custom w-full p-2.5 border border-gray-300 rounded-lg text-center">
+                </div>
+                <div>
+                    <label for="noOfequiDetail" class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                    <input type="number" id="noOfequiDetail" value="1" min="1" class="form-input-custom w-full p-2.5 border border-gray-300 rounded-lg text-center">
+                </div>
+                <div>
+                    <label for="hoursPerDay" class="block text-xs font-medium text-gray-600 mb-1">Hours/Day</label>
+                    <input type="number" id="hoursPerDay" placeholder="e.g., 5" min="0" max="24" class="form-input-custom w-full p-2.5 border border-gray-300 rounded-lg text-center">
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                    <button onclick="addEquipmntDetail()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-emerald-500/50">
+                        + Add
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2 & 3: Consumption Table, Totals, and Calculation -->
+        <div id="results-section" class="card p-6 hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200">
+                2. Consumption Breakdown & Daily Totals
+            </h2>
+
+            <!-- Desktop/Tablet Table Header -->
+            <div class="hidden sm:grid grid-cols-8 gap-4 text-sm font-extrabold text-gray-600 mb-3 border-b-2 pb-2">
+                <div class="col-span-2">Appliance</div>
+                <div>Watts</div>
+                <div>Qty</div>
+                <div>Total Load (W)</div>
+                <div>Hours/Day</div>
+                <div>Daily KWH</div>
+                <div class="text-center">Remove</div>
+            </div>
+
+            <!-- Appliance Details Container -->
+            <div id="appliances-container" class="space-y-4 sm:space-y-0">
+                <!-- Data rows will be injected here -->
+            </div>
+            
+            <!-- Total Summary (Enhanced Style) -->
+            <div class="mt-8 pt-4 border-t-2 border-solid border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-4 font-bold text-gray-800">
+                <div class="col-span-2 md:col-span-2 text-xl tracking-wider">AGGREGATE DAILY TOTALS</div>
+                <div class="text-lg flex justify-between md:justify-start">
+                    <span class="md:hidden font-semibold text-gray-500">Total Load:</span>
+                    <span id="totalLoadSpan" class="text-blue-700">0 W</span>
+                </div>
+                <div class="text-lg flex justify-between md:justify-start">
+                    <span class="md:hidden font-semibold text-gray-500">Total Daily KWH:</span>
+                    <span id="totalDailyConsumptionSpan" class="text-blue-700">0.00 KWH/day</span>
+                </div>
+            </div>
+            
+            <!-- Step 3: Date, Consumer Type & Final Calculation (New Step) -->
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 pt-6 border-t border-gray-200">
+                3. Define Period and Calculate Final Cost
+            </h2>
+
+            <!-- Date Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end mb-6">
+                <div>
+                    <label for="fromDateField" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input type="date" id="fromDateField" class="form-input-custom w-full p-2.5 border border-gray-300 rounded-lg transition duration-150">
+                </div>
+                <div>
+                    <label for="endDateField" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input type="date" id="endDateField" class="form-input-custom w-full p-2.5 border border-gray-300 rounded-lg transition duration-150">
+                </div>
+                <!-- Placeholder to match grid layout -->
+                <div></div>
+            </div>
+
+            <!-- Consumer Type and Button -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div class="md:col-span-2">
+                    <label for="customerType" class="block text-sm font-medium text-gray-700 mb-1">Select Consumer Type (For Tiered Pricing)</label>
+                    <select id="customerType" onchange="handleTypeChange()" class="form-input-custom w-full p-2.5 border border-gray-300 rounded-lg transition duration-150 appearance-none bg-white">
+                        <option value="0">--- Select Type ---</option>
+                        <option value="1">Type 1 (Domestic, Low Consumption)</option>
+                        <option value="2">Type 2 (Domestic, Medium Consumption)</option>
+                        <option value="3">Type 3 (Commercial, Low Load)</option>
+                        <option value="4">Type 4 (Commercial, High Load - includes Rs 7.12 slab)</option>
+                        <option value="CUSTOM">Custom Tariff (Editable)</option>
+                    </select>
+                </div>
+                <div>
+                    <button onclick="calcCost()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-blue-500/50">
+                        Calculate Final Cost
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Slabs Editor (Hidden by default, becomes visible when CUSTOM is selected) -->
+            <div id="customSlabEditor" class="mt-8 p-6 bg-indigo-50 border-2 border-indigo-300 rounded-xl hidden">
+                <div class="flex justify-between items-center mb-4 pb-2 border-b border-indigo-300">
+                    <h3 class="text-xl font-semibold text-indigo-800">Edit Custom Tariff Slabs (Rs./kWh)</h3>
+                    <button onclick="addSlab()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition duration-150">
+                        + Add Slab
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-indigo-300 bg-white rounded-lg">
+                        <thead class="bg-indigo-200">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">Slab Range (kWh)</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">Upper Limit (kWh)</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">Rate (Rs./kWh)</th>
+                                <th class="w-12"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="customSlabTableBody" class="divide-y divide-gray-200">
+                            <!-- Custom Slabs will be rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+                <p class="mt-3 text-sm text-indigo-700 italic font-medium">Rates changed here will trigger an automatic recalculation.</p>
+            </div>
+
+            <!-- Final Cost Display (Highly Prominent) -->
+            <div id="resultsContainer" class="mt-8">
+                <div id="totalCostDiv" class="p-6 bg-blue-50 border-2 border-blue-300 rounded-xl text-center shadow-inner hidden">
+                    
+                    <p id="dayCountDisplay" class="mb-3 text-base font-semibold text-gray-600 hidden"></p>
+                    
+                    <!-- NEW: Total Consumed Units -->
+                    <p class="text-lg text-red-600 font-semibold mb-1">Total Units Consumed for Period</p>
+                    <p id="totalKwhPeriodDisplay" class="text-4xl font-extrabold text-red-700 tracking-wider mb-4">0.00 kWh</p>
+
+                    <!-- Total Cost -->
+                    <p class="text-lg text-blue-600 font-semibold mb-1">Estimated Total Energy Charge (Tiered)</p>
+                    <p id="approxCostExclMVCA" class="text-5xl font-extrabold text-blue-800 tracking-wider">INR 0.00</p>
+                    
+                    <p class="text-sm text-gray-500 mt-4">(Excluding local taxes, fixed charges, and variable cost adjustments)</p>
+                </div>
+
+                <!-- Difference from Flat Rate & Breakdown Section -->
+                <div id="breakdownSection" class="mt-6 p-6 bg-gray-50 border-2 border-gray-200 rounded-xl shadow-md hidden">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Cost Analysis & Breakdown</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pt-3 border-t border-gray-200">
+                         <!-- Baseline Cost -->
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <p class="text-sm text-gray-500 font-medium">Flat Rate Cost (Baseline at lowest slab rate)</p>
+                            <p id="flatRateCostDisplay" class="text-xl font-bold text-green-600">₹0.00</p>
+                        </div>
+                        <!-- Difference -->
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 md:col-span-2">
+                            <p class="text-sm text-gray-500 font-medium">Difference Due to Tiered Structure (Surcharge)</p>
+                            <p id="costDifferenceDisplay" class="text-xl font-bold text-red-600">₹0.00</p>
+                            <p class="text-xs text-gray-500 italic mt-1">
+                                This is the additional cost incurred because your consumption exceeded the initial low-rate tiers.
+                            </p>
+                        </div>
+                    </div>
+
+                    <h4 class="text-lg font-semibold text-gray-700 mb-3">Consumption Breakdown by Slab</h4>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-300">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Slab Range (kWh)</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Consumed (kWh)</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Rate (Rs./kWh)</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Charge (Rs.)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="breakdownTableBody" class="divide-y divide-gray-200 text-gray-700">
+                                <!-- Breakdown rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- New Note for clarity on editing -->
+                    <p id="rateEditNote" class="mt-4 text-sm text-red-600 italic hidden">
+                        *Note: The rates in this table are editable when 'Custom Tariff (Editable)' is selected.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Custom Modal/Alert Box -->
+    <div id="custom-alert" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center hidden z-50 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transform scale-95 transition-transform duration-300">
+            <h3 class="text-xl font-bold text-red-600 mb-3 border-b pb-2">Attention Required</h3>
+            <p id="alert-message" class="text-gray-700 mb-5"></p>
+            <button onclick="hideAlert()" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg transition duration-200">
+                Acknowledge
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA AND STATE ---
+        let totalDailyKwh = 0; 
+        let totalLoad = 0; 
+        const appliancesData = [];
+        let currentSlabs = [];
+        let calculationRunOnce = false; // Flag to enable auto-recalculation
+        
+        // Define all tariff structures (Rates in Rupees/kWh)
+        const tariffData = {
+            "1": { // Domestic, Low Consumption (Type 1)
+                slabs: [
+                    { max: 102, rate: 4.89 }, { max: 180, rate: 5.49 },
+                    { max: 300, rate: 6.35 }, { max: Infinity, rate: 6.84 }
+                ]
+            },
+            "2": { // Domestic, Medium Consumption (Type 2)
+                slabs: [
+                    { max: 102, rate: 4.94 }, { max: 180, rate: 5.60 },
+                    { max: 300, rate: 6.59 }, { max: 600, rate: 6.92 },
+                    { max: Infinity, rate: 7.18 }
+                ]
+            },
+            "3": { // Commercial, Low Load (Type 3)
+                slabs: [
+                    { max: 180, rate: 5.90 }, { max: 300, rate: 7.10 },
+                    { max: 450, rate: 7.75 }, { max: Infinity, rate: 8.18 }
+                ]
+            },
+            "4": { // Commercial, High Load (Type 4)
+                slabs: [
+                    { max: 180, rate: 5.92 }, { max: 300, rate: 7.12 }, 
+                    { max: 450, rate: 7.75 }, { max: Infinity, rate: 8.67 }
+                ]
+            },
+            "CUSTOM": {
+                slabs: [
+                    { max: 100, rate: 4.50 }, { max: 300, rate: 7.00 },
+                    { max: Infinity, rate: 8.00 }
+                ]
+            }
+        };
+
+        // --- CUSTOM SLAB MANAGEMENT (Shared Logic) ---
+
+        function handleTypeChange() {
+            const conType = document.getElementById("customerType").value;
+            const editor = document.getElementById('customSlabEditor');
+            
+            if (conType === "CUSTOM") {
+                editor.classList.remove('hidden');
+                currentSlabs = tariffData["CUSTOM"].slabs;
+                renderCustomSlabs();
+                document.getElementById('rateEditNote').classList.remove('hidden'); // Show note when custom is selected
+            } else {
+                editor.classList.add('hidden');
+                // Only show note if a fixed type is selected and results are visible
+                if (!document.getElementById('breakdownSection').classList.contains('hidden')) {
+                     document.getElementById('rateEditNote').classList.add('hidden'); // Hide note for fixed tariffs
+                }
+                
+                if (tariffData[conType]) {
+                    currentSlabs = tariffData[conType].slabs;
+                }
+            }
+            // Clear previous results on type change
+            document.getElementById('breakdownSection').classList.add('hidden');
+            document.getElementById('totalCostDiv').classList.add('hidden');
+        }
+
+        function renderCustomSlabs() {
+            const tbody = document.getElementById('customSlabTableBody');
+            tbody.innerHTML = '';
+            
+            let prevMax = 0;
+
+            tariffData['CUSTOM'].slabs.forEach((slab, index) => { // Render from official CUSTOM data
+                const maxUnit = slab.max === Infinity ? 'Above' : slab.max;
+
+                const row = tbody.insertRow();
+                row.className = 'hover:bg-indigo-50 transition duration-100';
+
+                // Slab Range (Non-editable display)
+                row.insertCell().textContent = `${prevMax + 1} - ${maxUnit} kWh`;
+
+                // Upper Limit (Editable)
+                const maxCell = row.insertCell();
+                maxCell.className = 'text-right';
+                if (slab.max !== Infinity) {
+                    maxCell.innerHTML = `<input type="number" value="${slab.max}" min="${prevMax + 1}" step="1" 
+                        oninput="updateSlabValue(${index}, 'max', this.value)" 
+                        class="editable-cell w-24 p-1 text-center">`;
+                } else {
+                    maxCell.textContent = '∞';
+                    maxCell.className = 'px-4 py-2 text-right font-medium text-gray-600';
+                }
+
+                // Rate (Editable)
+                const rateCell = row.insertCell();
+                rateCell.className = 'text-right';
+                rateCell.innerHTML = `<input type="number" value="${slab.rate.toFixed(2)}" min="0" step="0.01" 
+                    oninput="updateSlabValue(${index}, 'rate', this.value)" 
+                    onblur="if(calculationRunOnce) calcCost();"
+                    class="editable-cell w-24 p-1 text-center font-bold border-indigo-500">`;
+                
+                // Delete button
+                const deleteCell = row.insertCell();
+                deleteCell.className = 'text-center';
+                if (tariffData['CUSTOM'].slabs.length > 2 && slab.max !== Infinity) { 
+                     deleteCell.innerHTML = `<button onclick="deleteSlab(${index})" class="text-red-500 hover:text-red-700 text-xl transition duration-150" title="Remove Slab">
+                        &times;
+                     </button>`;
+                } else {
+                     deleteCell.textContent = '';
+                }
+
+                prevMax = slab.max;
+            });
+        }
+
+        function updateSlabValue(index, key, value) {
+            let numericValue = parseFloat(value);
+            const slabs = tariffData['CUSTOM'].slabs;
+
+            if (isNaN(numericValue) || numericValue < 0) return;
+
+            if (key === 'max') {
+                const prevMax = index === 0 ? 0 : slabs[index - 1].max;
+                
+                numericValue = Math.max(prevMax + 1, Math.floor(numericValue));
+                slabs[index][key] = numericValue; 
+                
+                // Auto-fix subsequent slabs' max limits to maintain order
+                for (let i = index + 1; i < slabs.length - 1; i++) { 
+                    if (slabs[i].max <= slabs[i - 1].max) {
+                        slabs[i].max = slabs[i - 1].max + 1;
+                    }
+                }
+            } else if (key === 'rate') {
+                // Rate change
+                slabs[index][key] = Math.max(0, numericValue);
+            }
+            
+            // Re-render the dedicated editor (optional, but keeps both views consistent)
+            renderCustomSlabs(); 
+
+            // Auto-recalculate immediately if calculation has run
+            if (calculationRunOnce) {
+                // Trigger full cost calculation on rate/max change
+                calcCost();
+            }
+        }
+        
+        function addSlab() {
+            const slabs = tariffData['CUSTOM'].slabs;
+            const lastIndex = slabs.length - 1;
+            const previousMax = slabs[lastIndex - 1].max;
+            
+            const newMax = previousMax + 100;
+            const newRate = slabs[lastIndex - 1].rate + 0.50; 
+            
+            // Insert the new slab before the Infinity slab
+            const newSlab = { max: newMax, rate: newRate };
+            slabs.splice(lastIndex, 0, newSlab);
+            
+            renderCustomSlabs();
+            if (calculationRunOnce) calcCost();
+        }
+        
+        function deleteSlab(index) {
+            const slabs = tariffData['CUSTOM'].slabs;
+            if (slabs.length > 2 && index < slabs.length - 1) { 
+                slabs.splice(index, 1);
+                renderCustomSlabs();
+                if (calculationRunOnce) calcCost();
+            } else {
+                showAlert("The custom structure must retain at least one intermediate slab and the final 'Above X' slab.");
+            }
+        }
+
+
+        // --- CORE LOGIC FUNCTIONS ---
+
+        function showAlert(message) {
+            document.getElementById('alert-message').textContent = message;
+            document.getElementById('custom-alert').classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            document.getElementById('custom-alert').classList.add('hidden');
+        }
+
+        function updateTotalsDisplay() {
+            const safeKwh = isNaN(totalDailyKwh) ? 0 : totalDailyKwh;
+            document.getElementById('totalLoadSpan').textContent = `${Math.round(totalLoad)} W`;
+            document.getElementById('totalDailyConsumptionSpan').textContent = `${safeKwh.toFixed(2)} KWH/day`;
+        }
+        
+        function addEquipmntDetail() {
+            const appliance = document.getElementById("applianceDetail").value.trim();
+            const wattValue = document.getElementById("wattDetail").value;
+            const noOfEquiValue = document.getElementById("noOfequiDetail").value;
+            const hrsValue = document.getElementById("hoursPerDay").value;
+
+            const watt = parseFloat(wattValue);
+            const noOfEqui = parseInt(noOfEquiValue);
+            const hrs = parseFloat(hrsValue);
+
+            if (!appliance || 
+                isNaN(watt) || isNaN(noOfEqui) || isNaN(hrs) || 
+                watt <= 0 || noOfEqui <= 0 || hrs <= 0) {
+                
+                showAlert("Please ensure Appliance Name, Wattage, Quantity, and Hours/Day are all entered, valid numbers, and greater than zero.");
+                return;
+            } else if (hrs > 24) {
+                showAlert("Hour per day cannot be greater than 24.");
+                return;
+            }
+
+            const applianceDailyKwh = (watt * noOfEqui * hrs) / 1000;
+            const applianceLoad = watt * noOfEqui;
+            const uniqueId = crypto.randomUUID();
+
+            totalLoad += applianceLoad;
+            totalDailyKwh += applianceDailyKwh;
+
+            appliancesData.push({
+                id: uniqueId, name: appliance, watt: watt, qty: noOfEqui, hrs: hrs,
+                dailyKwh: applianceDailyKwh, load: applianceLoad,
+            });
+
+            renderApplianceList();
+            
+            document.getElementById("applianceDetail").value = '';
+            document.getElementById("wattDetail").value = '100'; 
+            document.getElementById("noOfequiDetail").value = '1';
+            document.getElementById("hoursPerDay").value = '';
+            
+            document.getElementById('results-section').classList.remove('hidden');
+            updateTotalsDisplay();
+
+            // Clear results section when new appliance added
+            document.getElementById('breakdownSection').classList.add('hidden');
+            document.getElementById('totalCostDiv').classList.add('hidden');
+            calculationRunOnce = false;
+        }
+        
+        function renderApplianceList() {
+            const container = document.getElementById("appliances-container");
+            container.innerHTML = '';
+
+            appliancesData.forEach(item => {
+                const formattedDailyKwh = item.dailyKwh.toFixed(2);
+                const newRow = document.createElement('div');
+                newRow.id = `row-${item.id}`;
+                newRow.className = 'appliance-row';
+
+                const desktopLayout = `
+                    <div class="hidden sm:grid grid-cols-8 gap-4 items-center text-sm border-b border-gray-100 py-3 hover:bg-gray-50 transition duration-100">
+                        <div class="col-span-2 text-gray-700 font-medium truncate">${item.name}</div>
+                        <div class="text-gray-600">${item.watt}</div>
+                        <div class="text-gray-600">${item.qty}</div>
+                        <div class="text-gray-700 font-semibold">${item.load}</div>
+                        <div class="text-gray-600">${item.hrs}</div>
+                        <div class="text-blue-700 font-extrabold">${formattedDailyKwh}</div>
+                        <div class="text-center">
+                            <button onclick="removeEquipment('${item.id}')" class="text-red-500 hover:text-red-700 transition duration-150 focus:outline-none p-1 rounded-full hover:bg-red-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                const mobileLayout = `
+                    <div class="sm:hidden card border border-gray-200 p-4 space-y-2">
+                        <div class="flex justify-between items-center text-lg font-bold text-gray-800">
+                            <span>${item.name}</span>
+                            <button onclick="removeEquipment('${item.id}')" class="text-red-500 hover:text-red-700 transition duration-150 focus:outline-none p-1 rounded-full hover:bg-red-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                            <div><span class="font-medium">Total Load:</span> ${item.load} W</div>
+                            <div><span class="font-medium">Qty:</span> ${item.qty}</div>
+                            <div><span class="font-medium">Usage:</span> ${item.hrs} Hrs/Day</div>
+                            <div class="col-span-2 text-blue-700 font-extrabold"><span class="font-medium text-gray-600">Daily Energy:</span> ${formattedDailyKwh} KWH/day</div>
+                        </div>
+                    </div>
+                `;
+
+                newRow.innerHTML = desktopLayout + mobileLayout;
+                container.appendChild(newRow);
+            });
+        }
+
+        function removeEquipment(id) {
+            const index = appliancesData.findIndex(item => item.id === id);
+
+            if (index > -1) {
+                const item = appliancesData[index];
+                totalLoad -= item.load;
+                totalDailyKwh -= item.dailyKwh;
+                appliancesData.splice(index, 1);
+            }
+            
+            renderApplianceList();
+            updateTotalsDisplay();
+
+            if (totalDailyKwh <= 0.01 || isNaN(totalDailyKwh)) {
+                 document.getElementById('results-section').classList.add('hidden');
+                 document.getElementById('totalCostDiv').classList.add('hidden');
+                 document.getElementById('dayCountDisplay').classList.add('hidden');
+                 document.getElementById('breakdownSection').classList.add('hidden');
+                 calculationRunOnce = false;
+                 totalDailyKwh = 0; 
+            } else if (calculationRunOnce) {
+                // Auto-recalculate if active
+                calcCost();
+            }
+        }
+
+        // Function to update slab rate from breakdown table
+        function updateBreakdownRate(index, element) {
+            let newValue = parseFloat(element.textContent);
+            const slabs = tariffData['CUSTOM'].slabs;
+
+            if (isNaN(newValue) || newValue < 0) {
+                 // Revert to old value if invalid input
+                 element.textContent = slabs[index].rate.toFixed(2);
+                 showAlert("Invalid rate entered. Must be a positive number.");
+                 return;
+            }
+
+            // Update the underlying data structure
+            slabs[index].rate = newValue;
+            element.textContent = newValue.toFixed(2); // Format the display
+
+            // Re-run calculation and re-render the custom editor to keep them in sync
+            renderCustomSlabs();
+            calcCost();
+        }
+
+
+        function calcCost() {
+            const fromDate = document.getElementById("fromDateField").value;
+            const endDate = document.getElementById("endDateField").value;
+            const conType = document.getElementById("customerType").value;
+            let daysToCalculate = 0;
+            
+            if (totalDailyKwh <= 0.01 || isNaN(totalDailyKwh)) {
+                 showAlert("Please add appliances first before calculating the cost.");
+                 return;
+            }
+
+            // 1. Validate Inputs
+            if (fromDate === "" || endDate === "") {
+                showAlert("Please select a start and end date for the calculation period.");
+                return;
+            }
+            
+            const start = new Date(fromDate);
+            const end = new Date(endDate);
+            
+            if (start >= end) {
+                showAlert("Start date must be earlier than the end date.");
+                return;
+            }
+            if (conType === "0") {
+                showAlert("Please select a Consumer Type to calculate cost.");
+                return;
+            }
+
+            // 2. Calculate Days and Total Consumption
+            const diffTime = Math.abs(end - start);
+            // Add 1 day to include the end date in the period
+            daysToCalculate = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
+            
+            document.getElementById('dayCountDisplay').innerHTML = `Calculation period: <span class="text-blue-600 font-extrabold">${daysToCalculate} days</span>.`;
+            document.getElementById('dayCountDisplay').classList.remove('hidden');
+
+            let totalKwhForPeriod = totalDailyKwh * daysToCalculate;
+            let totPowConsumed = totalKwhForPeriod; 
+            let totalCost = 0;
+            let unitsRemaining = totPowConsumed;
+            
+            // Display Total Consumed Units for the Period
+            document.getElementById('totalKwhPeriodDisplay').textContent = `${totalKwhForPeriod.toFixed(2)} kWh`;
+
+
+            // 3. Get Tariff Slabs
+            const slabs = tariffData[conType].slabs;
+            const breakdownTableBody = document.getElementById('breakdownTableBody');
+            breakdownTableBody.innerHTML = ''; // Clear previous breakdown
+            
+            let prevMax = 0;
+            let baseRate = slabs.length > 0 ? slabs[0].rate : 0; 
+
+            // 4. Calculate Tiered Cost and Breakdown
+            slabs.forEach((slab, index) => { // Use index for referencing back to CUSTOM array
+                if (unitsRemaining <= 0) {
+                    return; 
+                }
+
+                const slabMin = prevMax;
+                const slabMax = slab.max;
+                const rate = slab.rate;
+                
+                // Calculate units covered by this slab
+                let unitsInThisSlab = 0;
+                if (slabMax === Infinity) {
+                    unitsInThisSlab = unitsRemaining;
+                } else {
+                    const slabCapacity = slabMax - slabMin;
+                    unitsInThisSlab = Math.min(slabCapacity, unitsRemaining);
+                }
+
+                if (unitsInThisSlab > 0) {
+                    const slabCharge = unitsInThisSlab * rate;
+                    totalCost += slabCharge;
+                    unitsRemaining -= unitsInThisSlab;
+                    
+                    // Add row to breakdown table
+                    const row = breakdownTableBody.insertRow();
+                    row.className = 'hover:bg-gray-100 transition duration-100';
+                    
+                    const rangeText = slabMax === Infinity ? `${slabMin + 1} & above` : `${slabMin + 1} - ${slabMax}`;
+                    
+                    row.insertCell().textContent = rangeText;
+                    
+                    const consumedCell = row.insertCell();
+                    consumedCell.className = 'text-right font-medium text-blue-700';
+                    consumedCell.textContent = unitsInThisSlab.toFixed(2);
+                    
+                    const rateCell = row.insertCell();
+                    rateCell.className = 'text-right font-mono text-sm text-gray-600';
+
+                    if (conType === 'CUSTOM') {
+                        // **Make the rate editable for the custom tariff**
+                        rateCell.innerHTML = `<span contenteditable="true" 
+                                class="editable-rate text-gray-800 font-semibold"
+                                onblur="updateBreakdownRate(${index}, this)"
+                                onkeypress="if (event.key === 'Enter') { this.blur(); return false; }"
+                                inputmode="decimal">${rate.toFixed(2)}</span>`;
+                    } else {
+                        rateCell.textContent = rate.toFixed(2);
+                    }
+                    
+                    const chargeCell = row.insertCell();
+                    chargeCell.className = 'text-right font-bold text-green-700';
+                    chargeCell.textContent = `₹${slabCharge.toFixed(2)}`;
+                }
+
+                prevMax = slabMax;
+            });
+
+            // 5. Calculate Difference from Flat Rate
+            const flatRateCost = totPowConsumed * baseRate;
+            const costDifference = totalCost - flatRateCost;
+            
+            // 6. Update UI
+            document.getElementById('approxCostExclMVCA').textContent = `INR ${totalCost.toFixed(2)}`;
+            
+            document.getElementById('flatRateCostDisplay').textContent = `₹${flatRateCost.toFixed(2)}`;
+            document.getElementById('costDifferenceDisplay').textContent = `₹${Math.abs(costDifference).toFixed(2)}`;
+            
+            const differenceElement = document.getElementById('costDifferenceDisplay');
+            differenceElement.classList.remove('text-red-600', 'text-green-600', 'text-gray-600');
+            
+            if (costDifference > 0.01) {
+                differenceElement.classList.add('text-red-600');
+            } else if (costDifference < -0.01) {
+                differenceElement.classList.add('text-green-600');
+            } else {
+                differenceElement.classList.add('text-gray-600');
+            }
+
+            document.getElementById('totalCostDiv').classList.remove('hidden');
+            document.getElementById('breakdownSection').classList.remove('hidden');
+            document.getElementById('totalKwhPeriodDisplay').classList.remove('hidden'); // Ensure KWH display is visible
+            
+            // 7. Update flags and notes
+            calculationRunOnce = true;
+            // Show note only if Custom Tariff is selected
+            if (conType === 'CUSTOM') {
+                document.getElementById('rateEditNote').classList.remove('hidden');
+            } else {
+                document.getElementById('rateEditNote').classList.add('hidden');
+            }
+        }
+
+        // Initial setup on load
+        window.onload = () => {
+             // Handle initial state and default selected type (Type 1)
+            handleTypeChange();
+        };
+
+    </script>
+</body>
+</html>
